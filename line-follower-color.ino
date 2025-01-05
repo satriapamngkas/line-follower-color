@@ -43,8 +43,12 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 SoftwareSerial bluetooth(BT_RX, BT_TX);
 
 bool isManual = false;
-String currentColor = "";
+String current_color = "";
 int motor_speed = 150;
+int sorted_red = 0;
+int sorted_green = 0;
+int sorted_blue = 0;
+String color_data = "";
 
 void setup() {
   delay(3000);
@@ -226,7 +230,7 @@ void detectColor(float distance) {
   } else if (green > red && green > blue && green > 100 && distance <= 10.5) {
     Serial.println("Green detected.");
     performPickup("Green");
-  // } else if (blue > red && blue > green && blue > 2000 && distance <= 10.5) {
+    // } else if (blue > red && blue > green && blue > 2000 && distance <= 10.5) {
   } else if (blue < red && blue < green && blue > 90 && distance <= 10.5) {
     Serial.println("Blue detected.");
     performPickup("Blue");
@@ -253,7 +257,6 @@ void performPickup(String color) {
   Serial.print("Starting pickup process for color: ");
 
   Serial.println(color);
-  currentColor = color;
 
   setServoAngle(SERVO3, 40);
   delay(500);
@@ -263,6 +266,9 @@ void performPickup(String color) {
   delay(500);
 
   Serial.println("Pickup complete. Returning servos to default positions.");
+  color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+  current_color = color;
+  bluetooth.println(color_data);
 
   setServoAngle(SERVO1, 60);
   // delay(500);
@@ -273,7 +279,13 @@ void performPickup(String color) {
 void performDrop(String color) {
   Serial.print("Starting drop process for color: ");
   Serial.println(color);
-  currentColor = "";
+  if (color == "red") {
+    sorted_red++;
+  } else if (color == "green") {
+    sorted_green++;
+  } else if (color == "blue") {
+    sorted_blue++;
+  }
 
   setServoAngle(SERVO1, -15);
   delay(500);
@@ -281,6 +293,9 @@ void performDrop(String color) {
   delay(500);
 
   Serial.println("Drop complete. Returning servos to default positions.");
+  current_color = "Tidak ada";
+  color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+  bluetooth.println(color_data);
 
   setServoAngle(SERVO1, 60);
   // delay(500);
