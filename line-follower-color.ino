@@ -94,7 +94,7 @@ void setup() {
     Serial.println("No TCS34725 found. Check connections.");
     while (1)
       ;
-  }else{
+  } else {
     Serial.println("TCS34725 Initialized");
   }
 
@@ -103,11 +103,23 @@ void setup() {
 
 void loop() {
   // if (bluetooth.available()) {
-  //   char command = bluetooth.read();
+  //   String receivedData = bluetooth.readStringUntil('\n');
   //   Serial.print("Received command: ");
   //   Serial.println(command);
-  //   handleBluetoothCommand(command);
+  //   handleBluetoothCommand(receivedData);
   // }
+
+  while (bluetooth.available()) {
+    char receivedChar = bluetooth.read();
+
+    if (receivedChar == '\n') {           // Akhir perintah
+      commandBuffer[bufferIndex] = '\0';  // Tambahkan terminator string
+      handleBluetoothCommand(commandBuffer);
+      bufferIndex = 0;  // Reset indeks buffer
+    } else if (bufferIndex < BUFFER_SIZE - 1) {
+      commandBuffer[bufferIndex++] = receivedChar;
+    }
+  }
 
   // color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
   // // current_color = color;
@@ -115,67 +127,115 @@ void loop() {
   // Serial.println("Sent color_data: " + color_data);
   // delay(500);
 
-  // if (!isManual) {
-  //   lineFollowWithObstacleAndColorDetection();
-  // }
+  if (!isManual) {
+    lineFollowWithObstacleAndColorDetection();
+  }
 }
 
-void handleBluetoothCommand(char command) {
-  if (command != 'A' && !isManual) {
-    isManual = true;
-    stopMotors();
-  }
+// void handleBluetoothCommand(String command) {
+//   Serial.print("Handling Bluetooth command: ");
+//   Serial.println(command);
+
+//   if (command == "AF") {
+//     moveForward();
+//     delay(1000);
+//     stopMotors();
+//   } else if (command == "AB") {
+//     moveBackward();
+//     delay(1000);
+//     stopMotors();
+//   } else if (command == "AL") {
+//     turnLeft();
+//     delay(1000);
+//     stopMotors();
+//   } else if (command == "AR") {
+//     turnRight();
+//     delay(1000);
+//     stopMotors();
+//   } else if (command == "AS") {
+//     stopMotors();
+//   } else if (command == "AM") {
+//     isManual = true;
+//     stopMotors();
+//     Serial.println("Manual mode activated.");
+//   } else if (command == "AA") {
+//     isManual = false;
+//     Serial.println("Automatic mode activated.");
+//   } else if (command == "A1") {
+//     adjustServo(SERVO1, -10);
+//     adjustServo(SERVO2, -10);
+//   } else if (command == "A2") {
+//     adjustServo(SERVO0, 10);
+//   } else if (command == "A3") {
+//     adjustServo(SERVO0, -10);
+//   } else if (command == "A4") {
+//     adjustServo(SERVO1, 10);
+//     adjustServo(SERVO2, 10);
+//   } else if (command == "A5") {
+//     setServoAngle(SERVO3, 65);
+//   } else if (command == "A6") {
+//     setServoAngle(SERVO3, 40);
+//   } else if (command == "A7") {
+//     adjustServo(SERVO2, -10);
+//   } else if (command == "A8") {
+//     adjustServo(SERVO2, 10);
+//   } else {
+//     Serial.println("Unknown command.");
+//   }
+// }
+
+void handleBluetoothCommand(const char* command) {
   Serial.print("Handling Bluetooth command: ");
   Serial.println(command);
 
-  switch (command) {
-    case 'F':
-      moveForward();
-      delay(1000);
-      stopMotors();
-      break;
-    case 'B':
-      moveBackward();
-      delay(1000);
-      stopMotors();
-      break;
-    case 'L':
-      turnLeft();
-      delay(1000);
-      stopMotors();
-      break;
-    case 'R':
-      turnRight();
-      delay(1000);
-      stopMotors();
-      break;
-    case 'S': stopMotors(); break;
-    case 'M':
-      isManual = true;
-      stopMotors();
-      Serial.println("Manual mode activated.");
-      break;
-    case 'A':
-      isManual = false;
-      Serial.println("Automatic mode activated.");
-      break;
-    case '1':
-      adjustServo(SERVO1, -10);
-      adjustServo(SERVO2, -10);
-      break;
-    case '2': adjustServo(SERVO0, 10); break;
-    case '3': adjustServo(SERVO0, -10); break;
-    case '4':
-      adjustServo(SERVO1, 10);
-      adjustServo(SERVO2, 10);
-      break;
-    case '5': setServoAngle(SERVO3, 65); break;
-    case '6': setServoAngle(SERVO3, 40); break;
-    case '7': adjustServo(SERVO2, -10); break;
-    case '8': adjustServo(SERVO2, 10); break;
-    default: Serial.println("Unknown command."); break;
+  if (strcmp(command, "AF") == 0) {
+    moveForward();
+    delay(1000);
+    stopMotors();
+  } else if (strcmp(command, "AB") == 0) {
+    moveBackward();
+    delay(1000);
+    stopMotors();
+  } else if (strcmp(command, "AL") == 0) {
+    turnLeft();
+    delay(1000);
+    stopMotors();
+  } else if (strcmp(command, "AR") == 0) {
+    turnRight();
+    delay(1000);
+    stopMotors();
+  } else if (strcmp(command, "AS") == 0) {
+    stopMotors();
+  } else if (strcmp(command, "AM") == 0) {
+    isManual = true;
+    stopMotors();
+    Serial.println("Manual mode activated.");
+  } else if (strcmp(command, "AA") == 0) {
+    isManual = false;
+    Serial.println("Automatic mode activated.");
+  } else if (strcmp(command, "A1") == 0) {
+    adjustServo(SERVO1, -10);
+    adjustServo(SERVO2, -10);
+  } else if (strcmp(command, "A2") == 0) {
+    adjustServo(SERVO0, 10);
+  } else if (strcmp(command, "A3") == 0) {
+    adjustServo(SERVO0, -10);
+  } else if (strcmp(command, "A4") == 0) {
+    adjustServo(SERVO1, 10);
+    adjustServo(SERVO2, 10);
+  } else if (strcmp(command, "A5") == 0) {
+    setServoAngle(SERVO3, 65);
+  } else if (strcmp(command, "A6") == 0) {
+    setServoAngle(SERVO3, 40);
+  } else if (strcmp(command, "A7") == 0) {
+    adjustServo(SERVO2, -10);
+  } else if (strcmp(command, "A8") == 0) {
+    adjustServo(SERVO2, 10);
+  } else {
+    Serial.println("Unknown command.");
   }
 }
+
 
 
 void lineFollowWithObstacleAndColorDetection() {
@@ -197,16 +257,18 @@ void lineFollowWithObstacleAndColorDetection() {
     Serial.println("Obstacle detected! Stopping.");
     stopMotors();
     // return;
+  } else if (left) {
+    // Prioritas kiri: belok kiri jika sensor kiri mendeteksi garis hitam
+    turnLeft();
+  } else if (right) {
+    // Prioritas kanan: belok kanan jika sensor kanan mendeteksi garis hitam
+    turnRight();
+  } else if (mid) {
+    // Jika hanya sensor tengah mendeteksi garis hitam, terus maju
+    moveForward();
   } else {
-    if (!left && !right) {
-      moveForward();
-    } else if (!left && right) {
-      turnRight();
-    } else if (left && !right) {
-      turnLeft();
-    } else {
-      moveBackward();
-    }
+    // Jika semua sensor mendeteksi putih, mundur
+    moveBackward();
   }
   detectColor(distance);
 }
@@ -312,7 +374,7 @@ void performDrop(String color) {
 }
 
 void adjustServo(uint8_t servo, int16_t delta) {
-  // uint16_t newAngle = constrain(servo_positions[servo] + delta, 0, 360);
+  uint16_t newAngle = constrain(servo_positions[servo] + delta, 0, 270);
   uint16_t newAngle = servo_positions[servo] + delta;
   setServoAngle(servo, newAngle);
   servo_positions[servo] = newAngle;
@@ -333,24 +395,13 @@ void setServoAngle(uint8_t servo, uint16_t angle) {
   Serial.println(angle);
 }
 
-void moveForward() {
-  Serial.println("Moving forward.");
-  motorFrontLeft.run(FORWARD);
-  motorFrontRight.run(FORWARD);
-  motorBackLeft.run(FORWARD);
-  motorBackRight.run(FORWARD);
-}
-
-void moveBackward() {
-  Serial.println("Moving backward.");
-  motorFrontLeft.run(BACKWARD);
-  motorFrontRight.run(BACKWARD);
-  motorBackLeft.run(BACKWARD);
-  motorBackRight.run(BACKWARD);
-}
-
 void turnLeft() {
   Serial.println("Turning left.");
+  motorFrontLeft.setSpeed(100);
+  motorFrontRight.setSpeed(150);
+  motorBackLeft.setSpeed(100);
+  motorBackRight.setSpeed(150);
+
   motorFrontLeft.run(BACKWARD);
   motorFrontRight.run(FORWARD);
   motorBackLeft.run(BACKWARD);
@@ -359,12 +410,42 @@ void turnLeft() {
 
 void turnRight() {
   Serial.println("Turning right.");
+  motorFrontLeft.setSpeed(150);
+  motorFrontRight.setSpeed(100);
+  motorBackLeft.setSpeed(150);
+  motorBackRight.setSpeed(100);
+
   motorFrontLeft.run(FORWARD);
   motorFrontRight.run(BACKWARD);
   motorBackLeft.run(FORWARD);
   motorBackRight.run(BACKWARD);
 }
 
+void moveForward() {
+  Serial.println("Moving forward.");
+  motorFrontLeft.setSpeed(150);
+  motorFrontRight.setSpeed(150);
+  motorBackLeft.setSpeed(150);
+  motorBackRight.setSpeed(150);
+
+  motorFrontLeft.run(FORWARD);
+  motorFrontRight.run(FORWARD);
+  motorBackLeft.run(FORWARD);
+  motorBackRight.run(FORWARD);
+}
+
+void moveBackward() {
+  Serial.println("Moving backward.");
+  motorFrontLeft.setSpeed(150);
+  motorFrontRight.setSpeed(150);
+  motorBackLeft.setSpeed(150);
+  motorBackRight.setSpeed(150);
+
+  motorFrontLeft.run(BACKWARD);
+  motorFrontRight.run(BACKWARD);
+  motorBackLeft.run(BACKWARD);
+  motorBackRight.run(BACKWARD);
+}
 void stopMotors() {
   Serial.println("Stopping motors.");
   motorFrontLeft.run(RELEASE);
