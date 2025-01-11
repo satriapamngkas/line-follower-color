@@ -50,9 +50,11 @@ int sorted_red = 2;
 int sorted_green = 3;
 int sorted_blue = 4;
 String color_data = "";
+int bufferIndex = 0;
+bool isCapit = false;
 
 void setup() {
-  delay(2000);
+  // delay(2000);
   // Initialize IR Sensors
   pinMode(IR_LEFT, INPUT);
   pinMode(IR_RIGHT, INPUT);
@@ -73,11 +75,11 @@ void setup() {
   // Set default servo positions
   setServoAngle(SERVO0, 80);
   delay(500);
-  setServoAngle(SERVO3, 65);
+  setServoAngle(SERVO3, 89);  //90 capit, 40 buka
   delay(500);
-  setServoAngle(SERVO2, 45);
+  setServoAngle(SERVO2, 90);  //kecil naik, 90 aman tertinggi, 150 terendah, posisi awal 90
   delay(500);
-  setServoAngle(SERVO1, 45);
+  setServoAngle(SERVO1, 100);  //kecil maju, 160 aman mundur, 50 maju, posisi awal 100
   delay(500);
 
   motorFrontLeft.setSpeed(150);
@@ -109,23 +111,25 @@ void loop() {
   //   handleBluetoothCommand(receivedData);
   // }
 
-  while (bluetooth.available()) {
-    char receivedChar = bluetooth.read();
+  // while (bluetooth.available()) {
+  //   char receivedChar = bluetooth.read();
 
-    if (receivedChar == '\n') {           // Akhir perintah
-      commandBuffer[bufferIndex] = '\0';  // Tambahkan terminator string
-      handleBluetoothCommand(commandBuffer);
-      bufferIndex = 0;  // Reset indeks buffer
-    } else if (bufferIndex < BUFFER_SIZE - 1) {
-      commandBuffer[bufferIndex++] = receivedChar;
-    }
-  }
+  //   if (receivedChar == '\n') {           // Akhir perintah
+  //     commandBuffer[bufferIndex] = '\0';  // Tambahkan terminator string
+  //     handleBluetoothCommand(commandBuffer);
+  //     bufferIndex = 0;  // Reset indeks buffer
+  //   } else if (bufferIndex < BUFFER_SIZE - 1) {
+  //     commandBuffer[bufferIndex++] = receivedChar;
+  //   }
+  // }
 
   // color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
   // // current_color = color;
   // bluetooth.println(color_data);
   // Serial.println("Sent color_data: " + color_data);
   // delay(500);
+
+  // detectColor(200);
 
   if (!isManual) {
     lineFollowWithObstacleAndColorDetection();
@@ -253,7 +257,7 @@ void lineFollowWithObstacleAndColorDetection() {
   Serial.print(", Distance: ");
   Serial.println(distance);
 
-  if (distance < 15.0) {
+  if (distance < 8.0) {
     Serial.println("Obstacle detected! Stopping.");
     stopMotors();
     // return;
@@ -289,16 +293,16 @@ void detectColor(float distance) {
   Serial.println(int(blue));
 
 
-  if (red > green && red > blue && red > 125 && distance <= 15) {
+  if (red > green && red > blue && red > 146 && distance <= 15) {
     Serial.println("Red detected.");
-    performPickup("Merah");
-  } else if (green > red && green > blue && green > 125 && distance <= 15) {
+    !isCapit ? performPickup("Merah") : performDrop("Merah");
+  } else if (green > red && green > blue && green > 136 && distance <= 15) {
     Serial.println("Green detected.");
-    performPickup("Hijau");
+    !isCapit ? performPickup("Hijau") : performDrop("Hijau");
     // } else if (blue > red && blue > green && blue > 2000 && distance <= 15) {
-  } else if (blue > red && blue > green && blue > 90 && distance <= 15) {
+  } else if (/*blue > red && blue > green &&*/ blue > 127 && distance <= 15) {
     Serial.println("Blue detected.");
-    performPickup("Biru");
+    !isCapit ? performPickup("Biru") : performDrop("Biru");
   }
 }
 
@@ -324,13 +328,13 @@ void performPickup(String color) {
   Serial.println(color);
 
   setServoAngle(SERVO3, 40);
-  delay(500);
-  setServoAngle(SERVO2, 50);
-  delay(500);
-  setServoAngle(SERVO1, -15);
-  delay(500);
-  setServoAngle(SERVO3, 65);
-  delay(500);
+  delay(1000);
+  setServoAngle(SERVO2, 120);
+  delay(1000);
+  setServoAngle(SERVO1, 0);
+  delay(1000);
+  setServoAngle(SERVO3, 90);
+  delay(1000);
 
   Serial.println("Pickup complete. Returning servos to default positions.");
   color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
@@ -338,10 +342,11 @@ void performPickup(String color) {
   current_color = color;
   bluetooth.println(color_data);
 
-  setServoAngle(SERVO2, 120);
-  delay(1000);
-  setServoAngle(SERVO1, 80);
-  delay(1000);
+  setServoAngle(SERVO2, 90);
+  delay(500);
+  setServoAngle(SERVO1, 100);
+  delay(2000);
+  isCapit=true;
 }
 
 void performDrop(String color) {
@@ -355,27 +360,30 @@ void performDrop(String color) {
     sorted_blue++;
   }
 
-  setServoAngle(SERVO1, -15);
-  delay(500);
+  setServoAngle(SERVO1, 0);
+  delay(1000);
+  setServoAngle(SERVO2, 120);
+  delay(1000);
   setServoAngle(SERVO3, 40);
-  delay(500);
+  delay(1000);
 
   Serial.println("Drop complete. Returning servos to default positions.");
   current_color = "Tidak ada";
   color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
   bluetooth.println(color_data);
 
-  setServoAngle(SERVO1, 80);
+  setServoAngle(SERVO2, 90);
   delay(500);
-  setServoAngle(SERVO2, 120);
+  setServoAngle(SERVO1, 100);
+  delay(1000);
+  setServoAngle(SERVO3, 90);
   delay(500);
-  setServoAngle(SERVO3, 65);
-  delay(500);
+  isCapit=false;
 }
 
 void adjustServo(uint8_t servo, int16_t delta) {
   uint16_t newAngle = constrain(servo_positions[servo] + delta, 0, 270);
-  uint16_t newAngle = servo_positions[servo] + delta;
+  // uint16_t newAngle = servo_positions[servo] + delta;
   setServoAngle(servo, newAngle);
   servo_positions[servo] = newAngle;
 
