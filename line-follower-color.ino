@@ -51,10 +51,11 @@ int sorted_green = 3;
 int sorted_blue = 4;
 String color_data = "";
 int bufferIndex = 0;
-bool isCapit = false;
+bool isHold = false;
+bool stopDetection =false;
 
 void setup() {
-  // delay(2000);
+  delay(2000);
   // Initialize IR Sensors
   pinMode(IR_LEFT, INPUT);
   pinMode(IR_RIGHT, INPUT);
@@ -73,13 +74,13 @@ void setup() {
   pwm.setPWMFreq(50);
 
   // Set default servo positions
-  setServoAngle(SERVO0, 80);
+  setServoAngle(SERVO0, 175);  //kecil kiri, hadap kiri 220
   delay(500);
-  setServoAngle(SERVO3, 89);  //90 capit, 40 buka
+  setServoAngle(SERVO3, 90);  //90 capit, 40 buka
   delay(500);
   setServoAngle(SERVO2, 90);  //kecil naik, 90 aman tertinggi, 150 terendah, posisi awal 90
   delay(500);
-  setServoAngle(SERVO1, 100);  //kecil maju, 160 aman mundur, 50 maju, posisi awal 100
+  setServoAngle(SERVO1, 180);  //kecil maju, 150 aman mundur, 50 maju, posisi awal 100
   delay(500);
 
   motorFrontLeft.setSpeed(150);
@@ -129,7 +130,9 @@ void loop() {
   // Serial.println("Sent color_data: " + color_data);
   // delay(500);
 
-  // detectColor(200);
+  // irTest();
+  // colorTest();
+  // detectColor();
 
   if (!isManual) {
     lineFollowWithObstacleAndColorDetection();
@@ -246,7 +249,7 @@ void lineFollowWithObstacleAndColorDetection() {
   bool left = digitalRead(IR_LEFT);
   bool right = digitalRead(IR_RIGHT);
   bool mid = digitalRead(IR_MID);
-  float distance = getUltrasonicDistance();
+  // float distance = getUltrasonicDistance();
 
   Serial.print("IR Left: ");
   Serial.print(left);
@@ -254,14 +257,17 @@ void lineFollowWithObstacleAndColorDetection() {
   Serial.print(right);
   Serial.print(", IR Mid: ");
   Serial.print(mid);
-  Serial.print(", Distance: ");
-  Serial.println(distance);
+  Serial.print("\t");
 
-  if (distance < 8.0) {
-    Serial.println("Obstacle detected! Stopping.");
-    stopMotors();
-    // return;
-  } else if (left) {
+  // Serial.print(", Distance: ");
+  // Serial.println(distance);
+
+  // if (distance < 8.0) {
+  //   Serial.println("Obstacle detected! Stopping.");
+  //   stopMotors();
+  //   // return;
+  // } else 
+  if (left) {
     // Prioritas kiri: belok kiri jika sensor kiri mendeteksi garis hitam
     turnLeft();
   } else if (right) {
@@ -272,13 +278,61 @@ void lineFollowWithObstacleAndColorDetection() {
     moveForward();
   } else {
     // Jika semua sensor mendeteksi putih, mundur
-    moveBackward();
+    // moveBackward();
+    stopMotors();
   }
-  detectColor(distance);
+  // detectColor();
 }
 
 
-void detectColor(float distance) {
+void detectColor() {
+  float red, green, blue;
+  // tcs.setInterrupt(false);  // turn on LED
+  delay(60);  // takes 50ms to read
+  tcs.getRGB(&red, &green, &blue);
+  tcs.setInterrupt(true);  // turn off LED
+
+  Serial.print("R: ");
+  Serial.print(int(red));
+  Serial.print(" G: ");
+  Serial.print(int(green));
+  Serial.print(" B: ");
+  Serial.println(int(blue));
+
+
+  if (red > green && red > blue && red > 140 /* && distance <= 15*/) {
+    stopMotors();
+    Serial.println("Red detected.");
+    !isHold ? performPickup("Merah") : performDrop("Merah");
+  } else if (green > red && green > blue && green > 136 /* && distance <= 15*/) {
+    // stopMotors();
+    Serial.println("Green detected.");
+    !isHold ? performPickup("Hijau") : performDrop("Hijau");
+    // } else if (blue > red && blue > green && blue > 2000 /* && distance <= 15*/) {
+  } else if (/*blue > red && blue > green &&*/ blue > 127 /* && distance <= 15*/) {
+    stopMotors();
+    Serial.println("Blue detected.");
+    !isHold ? performPickup("Biru") : performDrop("Biru");
+  }
+}
+
+void irTest() {
+  bool left = digitalRead(IR_LEFT);
+  bool right = digitalRead(IR_RIGHT);
+  bool mid = digitalRead(IR_MID);
+  // float distance = getUltrasonicDistance();
+
+  Serial.print("IR Left: ");
+  Serial.print(left);
+  Serial.print(", IR Mid: ");
+  Serial.print(mid);
+  Serial.print(", IR Right: ");
+  Serial.println(right);
+  // Serial.print(", Distance: ");
+  // Serial.println(distance);
+}
+
+void colorTest() {
   float red, green, blue;
   // tcs.setInterrupt(false);  // turn on LED
   delay(60);  // takes 50ms to read
@@ -293,16 +347,16 @@ void detectColor(float distance) {
   Serial.println(int(blue));
 
 
-  if (red > green && red > blue && red > 146 && distance <= 15) {
+  if (red > green && red > blue && red > 140 /* && distance <= 15*/) {
     Serial.println("Red detected.");
-    !isCapit ? performPickup("Merah") : performDrop("Merah");
-  } else if (green > red && green > blue && green > 136 && distance <= 15) {
+    !isHold ? performPickup("Merah") : performDrop("Merah");
+  } else if (green > red && green > blue && green > 136 /* && distance <= 15*/) {
+
     Serial.println("Green detected.");
-    !isCapit ? performPickup("Hijau") : performDrop("Hijau");
-    // } else if (blue > red && blue > green && blue > 2000 && distance <= 15) {
-  } else if (/*blue > red && blue > green &&*/ blue > 127 && distance <= 15) {
+    !isHold ? performPickup("Hijau") : performDrop("Hijau");
+  } else if (/*blue > red && blue > green &&*/ blue > 127 /* && distance <= 15*/) {
     Serial.println("Blue detected.");
-    !isCapit ? performPickup("Biru") : performDrop("Biru");
+    !isHold ? performPickup("Biru") : performDrop("Biru");
   }
 }
 
@@ -316,8 +370,8 @@ float getUltrasonicDistance() {
   long duration = pulseIn(ECHO_PIN, HIGH);
   float distance = (duration * 0.034) / 2;
 
-  Serial.print("Ultrasonic distance measured: ");
-  Serial.println(distance);
+  // Serial.print("Ultrasonic distance measured: ");
+  // Serial.println(distance);
 
   return distance;
 }
@@ -327,7 +381,7 @@ void performPickup(String color) {
 
   Serial.println(color);
 
-  setServoAngle(SERVO3, 40);
+  setServoAngle(SERVO3, 20);
   delay(1000);
   setServoAngle(SERVO2, 120);
   delay(1000);
@@ -346,7 +400,7 @@ void performPickup(String color) {
   delay(500);
   setServoAngle(SERVO1, 100);
   delay(2000);
-  isCapit=true;
+  isHold = true;
 }
 
 void performDrop(String color) {
@@ -378,7 +432,7 @@ void performDrop(String color) {
   delay(1000);
   setServoAngle(SERVO3, 90);
   delay(500);
-  isCapit=false;
+  isHold = false;
 }
 
 void adjustServo(uint8_t servo, int16_t delta) {
