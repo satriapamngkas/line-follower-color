@@ -3,20 +3,8 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <SoftwareSerial.h>
 
-// Motor definitions
-// AF_DCMotor motorFrontLeft(0);   // Motor 1
-// AF_DCMotor motorBackLeft(1);   // Motor 2
-AF_DCMotor motorLeft(2);   // Motor 3
-AF_DCMotor motorRight(3);  // Motor 4
-
-// IR Sensor pins
-#define IR_LEFT A0
-#define IR_RIGHT A1
-#define IR_MID 9
-
-// Ultrasonic sensor pins
-#define TRIG_PIN A2
-#define ECHO_PIN A3
+AF_DCMotor motorLeft(2);
+AF_DCMotor motorRight(3);
 
 // Bluetooth module pins
 #define BT_RX 2
@@ -32,8 +20,8 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVO3 3
 
 // Servo min and max pulse lengths
-#define SERVOMIN 150  // Min pulse length
-#define SERVOMAX 600  // Max pulse length
+#define SERVOMIN 150
+#define SERVOMAX 600
 
 // Servo positions
 uint16_t capit = 90;
@@ -62,14 +50,6 @@ unsigned long lastColorDetection = 0;
 
 void setup() {
   delay(2000);
-  // Initialize IR Sensors
-  pinMode(IR_LEFT, INPUT);
-  pinMode(IR_RIGHT, INPUT);
-  pinMode(IR_MID, INPUT);
-
-  // Initialize Ultrasonic Sensor
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
 
   // Initialize Bluetooth
   bluetooth.begin(9600);
@@ -89,20 +69,14 @@ void setup() {
   setServoAngle(SERVO1, initialServo[1]);  //kecil maju, 150 aman mundur, 50 maju, posisi awal 100
   delay(500);
 
-  // motorFrontLeft.setSpeed(150);
   motorRight.setSpeed(150);
-  // motorBackLeft.setSpeed(150);
   motorLeft.setSpeed(150);
 
-  // motorFrontLeft.run(RELEASE);
   motorRight.run(RELEASE);
-  // motorBackLeft.run(RELEASE);
   motorLeft.run(RELEASE);
 
   if (!tcs.begin()) {
     Serial.println("No TCS34725 found. Check connections.");
-    // while (1)
-    //   ;
   } else {
     Serial.println("TCS34725 Initialized");
   }
@@ -117,32 +91,8 @@ void loop() {
     Serial.println(command);
     handleBluetoothCommand(command);
   }
-
-  unsigned long timeNow = millis();
-
-  if (delayDetection) {
-    colorDetection = false;
-    if (timeNow - startDelayDetection >= 5000) {
-      Serial.println("Start color detection");
-      colorDetection = true;
-      delayDetection = false;
-    }
-  }
-
-  // color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
-  // // current_color = color;
-  // bluetooth.println(color_data);
-  // Serial.println("Sent color_data: " + color_data);
-  // delay(500);
-
-  // irTest();
-  // colorTest();
-  // detectColor();
-
-  if (!isManual) {
-    lineFollowWithObstacleAndColorDetection();
-  }
 }
+
 void handleBluetoothCommand(char command) {
   if (command != 'A' && !isManual) {
     isManual = true;
@@ -218,55 +168,12 @@ void handleBluetoothCommand(char command) {
   }
 }
 
-void lineFollowWithObstacleAndColorDetection() {
-  bool left = digitalRead(IR_LEFT);
-  bool right = digitalRead(IR_RIGHT);
-  bool mid = digitalRead(IR_MID);
-
-  float distance = getUltrasonicDistance();
-
-  Serial.print("IR Left: ");
-  Serial.print(left);
-  Serial.print(", IR Right: ");
-  Serial.print(right);
-  Serial.print(", IR Mid: ");
-  Serial.print(mid);
-  Serial.print(", Distance: ");
-  Serial.print(distance);
-  Serial.print("\t");
-
-  if (distance < 8.0 && distance != 0.0) {
-    Serial.println("Obstacle detected! Stopping.");
-    stopMotors();
-    // return;
-  } else if (left) {
-    // Prioritas kiri: belok kiri jika sensor kiri mendeteksi garis hitam
-    turnLeft();
-  } else if (right) {
-    // Prioritas kanan: belok kanan jika sensor kanan mendeteksi garis hitam
-    turnRight();
-  } else if (mid) {
-    // Jika hanya sensor tengah mendeteksi garis hitam, terus maju
-    moveForward();
-  } else {
-    // Jika semua sensor mendeteksi putih, mundur
-    // moveBackward();
-    stopMotors();
-  }
-  if (colorDetection)
-    detectColor();
-}
-
-
 void detectColor() {
-  // Serial.println("Start color detection");
   float red, green, blue;
   unsigned long timeNow = millis();
-  // tcs.setInterrupt(false);  // turn on LED
-  // delay(60);  // takes 50ms to read
   if (timeNow - lastColorDetection >= 60) {
     tcs.getRGB(&red, &green, &blue);
-    tcs.setInterrupt(true);  // turn off LED
+    tcs.setInterrupt(true);
 
     Serial.print("R: ");
     Serial.print(int(red));
@@ -292,78 +199,9 @@ void detectColor() {
       } else {
         current_color = "Hijau";
       }
-      // } else if (blue > red && blue > green && blue > 2000 /* && distance <= 15*/) {
     }
-    // else if (/*blue > red && blue > green &&*/ blue > 127 /* && distance <= 15*/) {
-    //   stopMotors();
-    //   Serial.println("Blue detected.");
-    //   !isHold ? performPickup("Biru") : performDrop("Biru");
-    // }
     lastColorDetection = timeNow;
   }
-}
-
-void irTest() {
-  bool left = digitalRead(IR_LEFT);
-  bool right = digitalRead(IR_RIGHT);
-  bool mid = digitalRead(IR_MID);
-  // float distance = getUltrasonicDistance();
-
-  Serial.print("IR Left: ");
-  Serial.print(left);
-  Serial.print(", IR Mid: ");
-  Serial.print(mid);
-  Serial.print(", IR Right: ");
-  Serial.println(right);
-  // Serial.print(", Distance: ");
-  // Serial.println(distance);
-}
-
-void colorTest() {
-  float red, green, blue;
-  unsigned long timeNow = millis();
-  // tcs.setInterrupt(false);  // turn on LED
-  // delay(60);  // takes 50ms to read
-  if (timeNow - lastColorDetection >= 60) {
-    tcs.getRGB(&red, &green, &blue);
-    // tcs.setInterrupt(true);  // turn off LED
-
-    Serial.print("R: ");
-    Serial.print(int(red));
-    Serial.print(" G: ");
-    Serial.print(int(green));
-    Serial.print(" B: ");
-    Serial.println(int(blue));
-
-
-    if (red > green && red > blue && red > 140 /* && distance <= 15*/) {
-      Serial.println("Red detected.");
-      !isHold ? performPickup("Merah") : performDrop("Merah");
-    } else if (green > red && green > blue && green > 136 /* && distance <= 15*/) {
-
-      Serial.println("Green detected.");
-      !isHold ? performPickup("Hijau") : performDrop("Hijau");
-    } else if (/*blue > red && blue > green &&*/ blue > 127 /* && distance <= 15*/) {
-      Serial.println("Blue detected.");
-      !isHold ? performPickup("Biru") : performDrop("Biru");
-    }
-  }
-}
-
-float getUltrasonicDistance() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-
-  long duration = pulseIn(ECHO_PIN, HIGH);
-  float distance = (duration * 0.034) / 2;
-
-  // Serial.print("Ultrasonic distance measured: ");
-  // Serial.println(distance);
-
-  return distance;
 }
 
 void performPickup(String color) {
@@ -455,59 +293,41 @@ void setServoAngle(uint8_t servo, uint16_t angle) {
 
 void turnLeft() {
   Serial.println("Turning left.");
-  // motorFrontLeft.setSpeed(motor_speed);
   motorRight.setSpeed(motor_speed);
-  // motorBackLeft.setSpeed(motor_speed);
   motorLeft.setSpeed(motor_speed);
 
-  // motorFrontLeft.run(BACKWARD);
   motorRight.run(FORWARD);
-  // motorBackLeft.run(BACKWARD);
   motorLeft.run(BACKWARD);
 }
 
 void turnRight() {
   Serial.println("Turning right.");
-  // motorFrontLeft.setSpeed(motor_speed);
   motorRight.setSpeed(motor_speed);
-  // motorBackLeft.setSpeed(motor_speed);
   motorLeft.setSpeed(motor_speed);
 
-  // motorFrontLeft.run(FORWARD);
   motorRight.run(BACKWARD);
-  // motorBackLeft.run(FORWARD);
   motorLeft.run(FORWARD);
 }
 
 void moveForward() {
   Serial.println("Moving forward.");
-  // motorFrontLeft.setSpeed(motor_speed);
   motorRight.setSpeed(motor_speed);
-  // motorBackLeft.setSpeed(motor_speed);
   motorLeft.setSpeed(motor_speed);
 
-  // motorFrontLeft.run(FORWARD);
   motorRight.run(FORWARD);
-  // motorBackLeft.run(FORWARD);
   motorLeft.run(FORWARD);
 }
 
 void moveBackward() {
   Serial.println("Moving backward.");
-  // motorFrontLeft.setSpeed(motor_speed);
   motorRight.setSpeed(motor_speed);
-  // motorBackLeft.setSpeed(motor_speed);
   motorLeft.setSpeed(motor_speed);
 
-  // motorFrontLeft.run(BACKWARD);
   motorRight.run(BACKWARD);
-  // motorBackLeft.run(BACKWARD);
   motorLeft.run(BACKWARD);
 }
 void stopMotors() {
   Serial.println("Stopping motors.");
-  // motorFrontLeft.run(RELEASE);
   motorRight.run(RELEASE);
-  // motorBackLeft.run(RELEASE);
   motorLeft.run(RELEASE);
 }
