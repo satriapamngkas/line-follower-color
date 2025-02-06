@@ -4,10 +4,10 @@
 #include <SoftwareSerial.h>
 
 // Motor definitions
-AF_DCMotor motorFrontLeft(0);   // Motor 1
+// AF_DCMotor motorFrontLeft(0);   // Motor 1
 // AF_DCMotor motorBackLeft(1);   // Motor 2
-AF_DCMotor motorBackRight(2);  // Motor 3
-// AF_DCMotor motorFrontRight(3);  // Motor 4
+AF_DCMotor motorLeft(2);   // Motor 3
+AF_DCMotor motorRight(3);  // Motor 4
 
 // IR Sensor pins
 #define IR_LEFT A0
@@ -35,9 +35,11 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMIN 150  // Min pulse length
 #define SERVOMAX 600  // Max pulse length
 
-// Servo positions tracker
+// Servo positions
+uint16_t capit = 90;
+uint16_t bukaCapit = 40;
 uint16_t servo_positions[4] = { 50, 60, 30, 65 };
-uint16_t initialServo[4] = { 175, 135, 90, 90 };
+uint16_t initialServo[4] = { 155, 135, 90, 90 };
 
 // Color sensor
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
@@ -47,13 +49,13 @@ SoftwareSerial bluetooth(BT_RX, BT_TX);
 bool isManual = false;
 String current_color = "Merah";
 int motor_speed = 150;
-int sorted_red = 2;
-int sorted_green = 3;
-int sorted_blue = 4;
+int sorted_red = 0;
+int sorted_green = 0;
+int sorted_blue = 0;
 String color_data = "";
 int bufferIndex = 0;
 bool isHold = false;
-bool colorDetection = false;
+bool colorDetection = true;
 bool delayDetection = false;
 unsigned long startDelayDetection = 0;
 unsigned long lastColorDetection = 0;
@@ -78,7 +80,7 @@ void setup() {
   pwm.setPWMFreq(50);
 
   // Set default servo positions
-  setServoAngle(SERVO0, initialServo[0]);  //kecil kiri, serong kiri 175
+  setServoAngle(SERVO0, initialServo[0]);  //kecil kanan, serong kiri 175
   delay(500);
   setServoAngle(SERVO3, initialServo[3]);  //90 capit, 40 buka
   delay(500);
@@ -87,20 +89,20 @@ void setup() {
   setServoAngle(SERVO1, initialServo[1]);  //kecil maju, 150 aman mundur, 50 maju, posisi awal 100
   delay(500);
 
-  motorFrontLeft.setSpeed(150);
-  // motorFrontRight.setSpeed(150);
+  // motorFrontLeft.setSpeed(150);
+  motorRight.setSpeed(150);
   // motorBackLeft.setSpeed(150);
-  motorBackRight.setSpeed(150);
+  motorLeft.setSpeed(150);
 
-  motorFrontLeft.run(RELEASE);
-  // motorFrontRight.run(RELEASE);
+  // motorFrontLeft.run(RELEASE);
+  motorRight.run(RELEASE);
   // motorBackLeft.run(RELEASE);
-  motorBackRight.run(RELEASE);
+  motorLeft.run(RELEASE);
 
   if (!tcs.begin()) {
     Serial.println("No TCS34725 found. Check connections.");
-    while (1)
-      ;
+    // while (1)
+    //   ;
   } else {
     Serial.println("TCS34725 Initialized");
   }
@@ -110,10 +112,10 @@ void setup() {
 
 void loop() {
   if (bluetooth.available()) {
-    String receivedData = bluetooth.readStringUntil('\n');
+    char command = bluetooth.read();
     Serial.print("Received command: ");
-    Serial.println(receivedData);
-    handleBluetoothCommand(receivedData.c_str());
+    Serial.println(command);
+    handleBluetoothCommand(command);
   }
 
   unsigned long timeNow = millis();
@@ -121,22 +123,11 @@ void loop() {
   if (delayDetection) {
     colorDetection = false;
     if (timeNow - startDelayDetection >= 5000) {
+      Serial.println("Start color detection");
       colorDetection = true;
       delayDetection = false;
     }
   }
-
-  // while (bluetooth.available()) {
-  //   char receivedChar = bluetooth.read();
-
-  //   if (receivedChar == '\n') {           // Akhir perintah
-  //     commandBuffer[bufferIndex] = '\0';  // Tambahkan terminator string
-  //     handleBluetoothCommand(commandBuffer);
-  //     bufferIndex = 0;  // Reset indeks buffer
-  //   } else if (bufferIndex < BUFFER_SIZE - 1) {
-  //     commandBuffer[bufferIndex++] = receivedChar;
-  //   }
-  // }
 
   // color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
   // // current_color = color;
@@ -152,108 +143,78 @@ void loop() {
     lineFollowWithObstacleAndColorDetection();
   }
 }
-
-// void handleBluetoothCommand(String command) {
-//   Serial.print("Handling Bluetooth command: ");
-//   Serial.println(command);
-
-//   if (command == "AF") {
-//     moveForward();
-//     delay(1000);
-//     stopMotors();
-//   } else if (command == "AB") {
-//     moveBackward();
-//     delay(1000);
-//     stopMotors();
-//   } else if (command == "AL") {
-//     turnLeft();
-//     delay(1000);
-//     stopMotors();
-//   } else if (command == "AR") {
-//     turnRight();
-//     delay(1000);
-//     stopMotors();
-//   } else if (command == "AS") {
-//     stopMotors();
-//   } else if (command == "AM") {
-//     isManual = true;
-//     stopMotors();
-//     Serial.println("Manual mode activated.");
-//   } else if (command == "AA") {
-//     isManual = false;
-//     Serial.println("Automatic mode activated.");
-//   } else if (command == "A1") {
-//     adjustServo(SERVO1, -10);
-//     adjustServo(SERVO2, -10);
-//   } else if (command == "A2") {
-//     adjustServo(SERVO0, 10);
-//   } else if (command == "A3") {
-//     adjustServo(SERVO0, -10);
-//   } else if (command == "A4") {
-//     adjustServo(SERVO1, 10);
-//     adjustServo(SERVO2, 10);
-//   } else if (command == "A5") {
-//     setServoAngle(SERVO3, 65);
-//   } else if (command == "A6") {
-//     setServoAngle(SERVO3, 40);
-//   } else if (command == "A7") {
-//     adjustServo(SERVO2, -10);
-//   } else if (command == "A8") {
-//     adjustServo(SERVO2, 10);
-//   } else {
-//     Serial.println("Unknown command.");
-//   }
-// }
-
-void handleBluetoothCommand(const char* command) {
-  Serial.print("Handling Bluetooth command: ");
-  Serial.println(command);
-
-  if (strcmp(command, "AF") == 0) {
-    moveForward();
-    delay(1000);
-    stopMotors();
-  } else if (strcmp(command, "AB") == 0) {
-    moveBackward();
-    delay(1000);
-    stopMotors();
-  } else if (strcmp(command, "AL") == 0) {
-    turnLeft();
-    delay(1000);
-    stopMotors();
-  } else if (strcmp(command, "AR") == 0) {
-    turnRight();
-    delay(1000);
-    stopMotors();
-  } else if (strcmp(command, "AS") == 0) {
-    stopMotors();
-  } else if (strcmp(command, "AM") == 0) {
+void handleBluetoothCommand(char command) {
+  if (command != 'A' && !isManual) {
     isManual = true;
     stopMotors();
-    Serial.println("Manual mode activated.");
-  } else if (strcmp(command, "AA") == 0) {
-    isManual = false;
-    Serial.println("Automatic mode activated.");
-  } else if (strcmp(command, "A1") == 0) {
-    adjustServo(SERVO1, -10);
-    adjustServo(SERVO2, -10);
-  } else if (strcmp(command, "A2") == 0) {
-    adjustServo(SERVO0, 10);
-  } else if (strcmp(command, "A3") == 0) {
-    adjustServo(SERVO0, -10);
-  } else if (strcmp(command, "A4") == 0) {
-    adjustServo(SERVO1, 10);
-    adjustServo(SERVO2, 10);
-  } else if (strcmp(command, "A5") == 0) {
-    setServoAngle(SERVO3, 65);
-  } else if (strcmp(command, "A6") == 0) {
-    setServoAngle(SERVO3, 40);
-  } else if (strcmp(command, "A7") == 0) {
-    adjustServo(SERVO2, -10);
-  } else if (strcmp(command, "A8") == 0) {
-    adjustServo(SERVO2, 10);
-  } else {
-    Serial.println("Unknown command.");
+  }
+  Serial.print("Handling Bluetooth command: ");
+  Serial.println(command);
+  switch (command) {
+    case 'F':
+      moveForward();
+      delay(1000);
+      stopMotors();
+      break;
+    case 'B':
+      moveBackward();
+      delay(1000);
+      stopMotors();
+      break;
+    case 'L':
+      turnLeft();
+      delay(3000);
+      stopMotors();
+      break;
+    case 'R':
+      turnRight();
+      delay(3000);
+      stopMotors();
+      break;
+    case 'S': stopMotors(); break;
+    case 'M':
+      isManual = true;
+      stopMotors();
+      Serial.println("Manual mode activated.");
+      break;
+    case 'A':
+      isManual = false;
+      Serial.println("Automatic mode activated.");
+      break;
+    case '1':
+      adjustServo(SERVO1, -10);
+      adjustServo(SERVO2, -10);
+      break;
+    case '2': adjustServo(SERVO0, 10); break;
+    case '3': adjustServo(SERVO0, -10); break;
+    case '4':
+      adjustServo(SERVO1, 10);
+      adjustServo(SERVO2, 10);
+      break;
+    case '5':
+      detectColor();
+      setServoAngle(SERVO3, 90);
+      color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+      Serial.println("Sent color_data: " + color_data);
+      bluetooth.println(color_data);
+      break;
+    case '6':
+      setServoAngle(SERVO3, 40);
+
+      if (current_color == "Merah") {
+        sorted_red++;
+      } else if (current_color == "Hijau") {
+        sorted_green++;
+      } else if (current_color == "Biru") {
+        sorted_blue++;
+      }
+      color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+      Serial.println("Sent color_data: " + color_data);
+      bluetooth.println(color_data);
+      break;
+    case '7': adjustServo(SERVO2, -10); break;
+    case '8': adjustServo(SERVO2, 10); break;
+    default: Serial.println("Unknown command."); break;
   }
 }
 
@@ -274,7 +235,7 @@ void lineFollowWithObstacleAndColorDetection() {
   Serial.print(distance);
   Serial.print("\t");
 
-  if (distance < 8.0) {
+  if (distance < 8.0 && distance != 0.0) {
     Serial.println("Obstacle detected! Stopping.");
     stopMotors();
     // return;
@@ -288,17 +249,17 @@ void lineFollowWithObstacleAndColorDetection() {
     // Jika hanya sensor tengah mendeteksi garis hitam, terus maju
     moveForward();
   } else {
-    // Jika semua sensor mendete[ksi putih, mundur
+    // Jika semua sensor mendeteksi putih, mundur
     // moveBackward();
     stopMotors();
   }
-  if (!colorDetection)
+  if (colorDetection)
     detectColor();
 }
 
 
 void detectColor() {
-  Serial.println("Start color detection");
+  // Serial.println("Start color detection");
   float red, green, blue;
   unsigned long timeNow = millis();
   // tcs.setInterrupt(false);  // turn on LED
@@ -318,11 +279,19 @@ void detectColor() {
     if (red > green && red > blue && red > 125 /* && distance <= 15*/) {
       stopMotors();
       Serial.println("Red detected.");
-      !isHold ? performPickup("Merah") : performDrop("Merah");
+      if (!isManual) {
+        !isHold ? performPickup("Merah") : performDrop("Merah");
+      } else {
+        current_color = "Merah";
+      }
     } else if (green > red && green > blue && green > 120 /* && distance <= 15*/) {
       stopMotors();
       Serial.println("Green detected.");
-      !isHold ? performPickup("Hijau") : performDrop("Hijau");
+      if (!isManual) {
+        !isHold ? performPickup("Hijau") : performDrop("Hijau");
+      } else {
+        current_color = "Hijau";
+      }
       // } else if (blue > red && blue > green && blue > 2000 /* && distance <= 15*/) {
     }
     // else if (/*blue > red && blue > green &&*/ blue > 127 /* && distance <= 15*/) {
@@ -402,19 +371,19 @@ void performPickup(String color) {
 
   Serial.println(color);
 
-  setServoAngle(SERVO3, 20);
+  setServoAngle(SERVO3, 40);
   delay(1000);
   setServoAngle(SERVO2, 120);
   delay(1000);
-  setServoAngle(SERVO1, 0);
+  setServoAngle(SERVO1, 30);
   delay(1000);
   setServoAngle(SERVO3, 90);
   delay(1000);
 
   Serial.println("Pickup complete. Returning servos to default positions.");
+  current_color = color;
   color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
   Serial.println("Sent color_data: " + color_data);
-  current_color = color;
   bluetooth.println(color_data);
 
   setServoAngle(SERVO2, initialServo[2]);
@@ -422,6 +391,7 @@ void performPickup(String color) {
   setServoAngle(SERVO1, initialServo[1]);
   delay(2000);
   isHold = true;
+  Serial.println("Start delay color detection");
   delayDetection = true;
   startDelayDetection = millis();
 }
@@ -437,7 +407,7 @@ void performDrop(String color) {
     sorted_blue++;
   }
 
-  setServoAngle(SERVO1, 0);
+  setServoAngle(SERVO1, 30);
   delay(1000);
   setServoAngle(SERVO2, 120);
   delay(1000);
@@ -453,9 +423,10 @@ void performDrop(String color) {
   delay(500);
   setServoAngle(SERVO1, initialServo[1]);
   delay(1000);
-  setServoAngle(SERVO3, initialServo[3]);
+  setServoAngle(SERVO3, 90);
   delay(500);
   isHold = false;
+  Serial.println("Start delay color detection");
   delayDetection = true;
   startDelayDetection = millis();
 }
@@ -484,59 +455,59 @@ void setServoAngle(uint8_t servo, uint16_t angle) {
 
 void turnLeft() {
   Serial.println("Turning left.");
-  motorFrontLeft.setSpeed(motor_speed);
-  // motorFrontRight.setSpeed(motor_speed);
+  // motorFrontLeft.setSpeed(motor_speed);
+  motorRight.setSpeed(motor_speed);
   // motorBackLeft.setSpeed(motor_speed);
-  motorBackRight.setSpeed(motor_speed);
+  motorLeft.setSpeed(motor_speed);
 
-  motorFrontLeft.run(BACKWARD);
-  // motorFrontRight.run(FORWARD);
+  // motorFrontLeft.run(BACKWARD);
+  motorRight.run(FORWARD);
   // motorBackLeft.run(BACKWARD);
-  motorBackRight.run(FORWARD);
+  motorLeft.run(BACKWARD);
 }
 
 void turnRight() {
   Serial.println("Turning right.");
-  motorFrontLeft.setSpeed(motor_speed);
-  // motorFrontRight.setSpeed(motor_speed);
+  // motorFrontLeft.setSpeed(motor_speed);
+  motorRight.setSpeed(motor_speed);
   // motorBackLeft.setSpeed(motor_speed);
-  motorBackRight.setSpeed(motor_speed);
+  motorLeft.setSpeed(motor_speed);
 
-  motorFrontLeft.run(FORWARD);
-  // motorFrontRight.run(BACKWARD);
+  // motorFrontLeft.run(FORWARD);
+  motorRight.run(BACKWARD);
   // motorBackLeft.run(FORWARD);
-  motorBackRight.run(BACKWARD);
+  motorLeft.run(FORWARD);
 }
 
 void moveForward() {
   Serial.println("Moving forward.");
-  motorFrontLeft.setSpeed(motor_speed);
-  // motorFrontRight.setSpeed(motor_speed);
+  // motorFrontLeft.setSpeed(motor_speed);
+  motorRight.setSpeed(motor_speed);
   // motorBackLeft.setSpeed(motor_speed);
-  motorBackRight.setSpeed(motor_speed);
+  motorLeft.setSpeed(motor_speed);
 
-  motorFrontLeft.run(FORWARD);
-  // motorFrontRight.run(FORWARD);
+  // motorFrontLeft.run(FORWARD);
+  motorRight.run(FORWARD);
   // motorBackLeft.run(FORWARD);
-  motorBackRight.run(FORWARD);
+  motorLeft.run(FORWARD);
 }
 
 void moveBackward() {
   Serial.println("Moving backward.");
-  motorFrontLeft.setSpeed(motor_speed);
-  // motorFrontRight.setSpeed(motor_speed);
+  // motorFrontLeft.setSpeed(motor_speed);
+  motorRight.setSpeed(motor_speed);
   // motorBackLeft.setSpeed(motor_speed);
-  motorBackRight.setSpeed(motor_speed);
+  motorLeft.setSpeed(motor_speed);
 
-  motorFrontLeft.run(BACKWARD);
-  // motorFrontRight.run(BACKWARD);
+  // motorFrontLeft.run(BACKWARD);
+  motorRight.run(BACKWARD);
   // motorBackLeft.run(BACKWARD);
-  motorBackRight.run(BACKWARD);
+  motorLeft.run(BACKWARD);
 }
 void stopMotors() {
   Serial.println("Stopping motors.");
-  motorFrontLeft.run(RELEASE);
-  // motorFrontRight.run(RELEASE);
+  // motorFrontLeft.run(RELEASE);
+  motorRight.run(RELEASE);
   // motorBackLeft.run(RELEASE);
-  motorBackRight.run(RELEASE);
+  motorLeft.run(RELEASE);
 }
