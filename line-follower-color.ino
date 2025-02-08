@@ -3,8 +3,8 @@
 #include <Adafruit_PWMServoDriver.h>
 #include <SoftwareSerial.h>
 
-AF_DCMotor motorLeft(2);
-AF_DCMotor motorRight(3);
+AF_DCMotor motorRight(2);
+AF_DCMotor motorLeft(3);
 
 // Bluetooth module pins
 #define BT_RX 2
@@ -52,7 +52,6 @@ bool isActionRunning = false;
 char currentAction;
 
 void setup() {
-  delay(2000);
 
   // Initialize Bluetooth
   bluetooth.begin(9600);
@@ -124,11 +123,71 @@ void handleBluetoothCommand(char command) {
       stopMotors();
       Serial.println("Manual mode activated.");
       break;
-    default:
-      Serial.println("Unknown command.");
+    case '1':
+      adjustServo(SERVO1, -10);
+      adjustServo(SERVO2, -10);
       break;
+    case '2': adjustServo(SERVO0, 10); break;
+    case '3': adjustServo(SERVO0, -10); break;
+    case '4':
+      adjustServo(SERVO1, 10);
+      adjustServo(SERVO2, 10);
+      break;
+    case '5':
+      detectColor();
+      setServoAngle(SERVO3, 90);
+      color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+      Serial.println("Sent color_data: " + color_data);
+      bluetooth.println(color_data);
+      break;
+    case '6':
+      setServoAngle(SERVO3, 40);
+      if (current_color == "Merah") {
+        sorted_red++;
+      } else if (current_color == "Hijau") {
+        sorted_green++;
+      } else if (current_color == "Biru") {
+        sorted_blue++;
+      }
+      color_data = current_color + "#" + String(sorted_red) + "#" + String(sorted_green) + "#" + String(sorted_blue);
+      Serial.println("Sent color_data: " + color_data);
+      bluetooth.println(color_data);
+      break;
+    case '7': adjustServo(SERVO2, -10); break;
+    case '8': adjustServo(SERVO2, 10); break;
+    default: Serial.println("Unknown command."); break;
   }
 }
+
+
+void detectColor() {
+  float red, green, blue;
+  unsigned long timeNow = millis();
+  if (timeNow - lastColorDetection >= 60) {
+    tcs.getRGB(&red, &green, &blue);
+    tcs.setInterrupt(true);
+
+    Serial.print("R: ");
+    Serial.print(int(red));
+    Serial.print(" G: ");
+    Serial.print(int(green));
+    Serial.print(" B: ");
+    Serial.println(int(blue));
+
+    if (red > green && red > blue && red > 125 /* && distance <= 15*/) {
+      // stopMotors();
+      Serial.println("Red detected.");
+      current_color = "Merah";
+
+    } else if (green > red && green > blue && green > 120 /* && distance <= 15*/) {
+      // stopMotors();
+      Serial.println("Green detected.");
+      current_color = "Hijau";
+    }
+    lastColorDetection = timeNow;
+  }
+}
+
 
 void executeMotorCommand(char command) {
   switch (command) {
@@ -139,6 +198,18 @@ void executeMotorCommand(char command) {
   }
   actionStartTime = millis();
   isActionRunning = true;
+}
+
+void adjustServo(uint8_t servo, int16_t delta) {
+  uint16_t newAngle = constrain(servo_positions[servo] + delta, 0, 270);
+  // uint16_t newAngle = servo_positions[servo] + delta;
+  setServoAngle(servo, newAngle);
+  servo_positions[servo] = newAngle;
+
+  Serial.print("Servo ");
+  Serial.print(servo);
+  Serial.print(" adjusted to ");
+  Serial.println(newAngle);
 }
 
 void moveForward() {
