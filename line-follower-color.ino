@@ -97,6 +97,7 @@ void loop() {
     stopMotors();
     isActionRunning = false;
   }
+  detectColor();
 }
 
 void handleBluetoothCommand(char command) {
@@ -174,12 +175,12 @@ void detectColor() {
     Serial.print(" B: ");
     Serial.println(int(blue));
 
-    if (red > green && red > blue && red > 125 /* && distance <= 15*/) {
+    if (red > green && red > blue && red > 155 /* && distance <= 15*/) {
       // stopMotors();
       Serial.println("Red detected.");
       current_color = "Merah";
 
-    } else if (green > red && green > blue && green > 120 /* && distance <= 15*/) {
+    } else if (/*green > red && */green > blue && green > 125 /* && distance <= 15*/) {
       // stopMotors();
       Serial.println("Green detected.");
       current_color = "Hijau";
